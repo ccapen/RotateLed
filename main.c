@@ -1,11 +1,9 @@
 #include "config.h"
-#include "stc15fxxxx.h"
 #include "led.h"
 
 void  delay_ms(unsigned int ms);
-void self_check();
 void init();
-void keydetect_on();
+void self_check();
 void rounddisplay();
 void chardisplay();
 void picdisplay();
@@ -18,12 +16,12 @@ unsigned char Ptwo[DEGREE_DIVMAX]={0x08,0x06,0x01,0x02,0x0B,0x08,0x04,0x02,0x03,
 																	0x08,0x08,0x0B,0x04,0x04,0x03,0x04,0x04,0x04,0x0B,0x08,0x00,
 																	0x01,0x01,0x01,0x01,0x05,0x09,0x0F,0x01,0x01,0x01,0x01,0x01,
 																	0x0F,0x01,0x02,0x09,0x08,0x04,0x03,0x00,0x07,0x08,0x08,0x0E};
-unsigned char Pone_p[DEGREE_DIVMAX]={0xff,0xff,0xff,0x7f,0x3f,0x3f,0x1f,0x1f,0x1f,0x3f,0x3f,0x7f,
+unsigned char Pone_pic[DEGREE_DIVMAX]={0xff,0xff,0xff,0x7f,0x3f,0x3f,0x1f,0x1f,0x1f,0x3f,0x3f,0x7f,
 																	0x7f,0xff,0xff,0xff,0x3f,0x1f,0x0f,0x07,0x01,0x00,0x01,0x03,
 																	0x07,0x07,0x0f,0x1f,0xff,0x1f,0x0f,0x07,0x07,0x03,0x01,0x00,
 																	0x01,0x07,0x0f,0x1f,0x3f,0xff,0xff,0xff,0x7f,0x7f,0x3f,0x3f,
 																	0x1f,0x1f,0x1f,0x3f,0x3f,0x7f,0xff,0xff};
-unsigned char Ptwo_p[DEGREE_DIVMAX]={0xff,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+unsigned char Ptwo_pic[DEGREE_DIVMAX]={0xff,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
 																	0x00,0x00,0xff,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
 																	0x00,0x00,0x00,0x00,0xff,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
 																	0x00,0x00,0x00,0x00,0x00,0x00,0xff,0x00,0x00,0x00,0x00,0x00,
@@ -32,32 +30,29 @@ unsigned char Ptwo_p[DEGREE_DIVMAX]={0xff,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x0
 void main(){
 	init();	
 	self_check();
-	keydetect_on();
-	//while(KEY==T_OFF);
+	
+	while(KEY==T_OFF);
+	motor_on();
+	while(spd_t>SPD_TWORK);
+	rounddisplay();
+	
 	if(P31) chardisplay();
 	else picdisplay();
+	
 	motor_off();
-	while(1)if(KEY==T_ON)motor_off();
+	while(1);
 }
 
-void self_check(){
-	unsigned char i;
-	ledr_on();
-	P10=0;
-	for(i=8;i;i--){
-		delay_ms(1000);
-		P1 <<=1;
-		P1++;
-		rgbrr();
-	}
-	P20=0;
-	for(i=8;i;i--){
-		delay_ms(1000);
-		P2 <<=1;
-		P2++;
-		rgbrr();
-	}	
-	P3 |= 0x70; //ledrgb_off();
+void exint0() interrupt 0       //INT0@LOCASIGNAL
+{
+	if(time_ov) {time_ov=0;spd_t=0xff;}
+	else spd_t=time;
+	time=0;
+}
+void tm0_isr() interrupt 1 using 1       /* Timer0 interrupt routine */
+{
+	time++;	
+	if(time==0xff) time_ov=1;
 }
 
 void init(){
@@ -83,19 +78,26 @@ void init(){
 	}
 }
 
-void delay_ms(unsigned int ms){
-     unsigned int i;
-	 do{
-	      i = MAIN_Fosc / 13000;
-		  while(--i)	;   //14T per loop
-     }while(--ms);
+void self_check(){
+	unsigned char i;
+	ledr_on();
+	P10=0;
+	for(i=8;i;i--){
+		delay_ms(1000);
+		P1 <<=1;
+		P1++;
+		rgbrr();
+	}
+	P20=0;
+	for(i=8;i;i--){
+		delay_ms(1000);
+		P2 <<=1;
+		P2++;
+		rgbrr();
+	}	
+	P3 |= 0x70; //ledrgb_off();
 }
-void keydetect_on(){
-	while(KEY==T_OFF);
-	motor_on();
-	while(spd_t>SPD_TWORK);
-	rounddisplay();
-}
+
 void rounddisplay(){
 	unsigned char i;
 	ledr_on();
@@ -116,19 +118,19 @@ void rounddisplay(){
 	for(i=8;i;i--){
 		delay_ms(500);
 		P2 >>=1;
-		P2+=0x80;
+		P2|=0x80;
 	}
 	P17=0;
 	for(i=8;i;i--){
 		delay_ms(500);
 		P1 >>=1;
-		P1+=0x80;
+		P1|=0x80;
 	}
 	ledr_off();	
 }
+
 void chardisplay(){
 	unsigned char i;
-	//while(KEY==T_OFF);
 	delay_ms(1000);
 	while(spd_t>SPD_TWORKC);
 	ledr_on();
@@ -154,13 +156,21 @@ void picdisplay(){
 			if(i==DEGREE_DIVMAX/4){ledr_off();ledg_on();}
 			if(i==DEGREE_DIVMAX/2) ledr_on();
 			if(i==DEGREE_DIVMAX*3/4){ledr_off();ledg_off();ledb_on();}
-			P1=Pone_p[i];
-			P2=Ptwo_p[i];
+			P1=Pone_pic[i];
+			P2=Ptwo_pic[i];
 			delay_ms(spd_t*(19.0/DEGREE_DIVMAX));//(19.0ms<20ms)
 		}
 		ledb_off();
 		P1=0xff;
 		P2=0xff;
 	}	
+}
+
+void delay_ms(unsigned int ms){
+     unsigned int i;
+	 do{
+	      i = MAIN_Fosc / 13000;
+		  while(--i)	;   //14T per loop
+     }while(--ms);
 }
 
