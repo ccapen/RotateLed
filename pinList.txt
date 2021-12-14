@@ -5,4 +5,4 @@ ledg:P3.5
 ledb:P3.6
 motorctl:P3.7
 key:P3.3
-locasignal:P3.2
+locationsignal:P3.2
